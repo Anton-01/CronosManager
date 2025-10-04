@@ -1,0 +1,49 @@
+services:
+  spring-app:
+    build: .
+    container_name: cronos-manager-app
+    restart: unless-stopped
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    ports:
+      - "8088:8080"
+    volumes:
+      - .:/app
+    networks:
+      - app-cronos-network-manager
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/cronos_manager_app_data
+      - SPRING_DATASOURCE_USERNAME=cronos_usr_app_db
+      - SPRING_DATASOURCE_PASSWORD=cronos_pass_8765_app-dd_0987
+    command: ["./mvnw", "spring-boot:run"]
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cronos_manager_app_data
+      POSTGRES_USER: cronos_usr_app_db
+      POSTGRES_PASSWORD: cronos_pass_8765_app-dd_0987
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - app-cronos-network-manager
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U cronos_usr_app_db -d cronos_manager_app_data" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  app-cronos-network-manager:
+    driver: bridge
