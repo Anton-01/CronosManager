@@ -2,12 +2,19 @@ package com.cronos.cronosmanager.repository.common;
 
 
 import com.cronos.cronosmanager.model.common.User;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface UserRepository {
-    User getUserByUuid(String userId);
-    User getUserByEmail(String email);
-    void resetLoginAttempts(String userUuid);
-    void updateLoginAttempts(String email);
-    void setLastLogin(Long userId);
-    void addLoginDevice(Long userId, String device, String client, String ipAddress);
+import java.util.Optional;
+import java.util.UUID;
+
+public interface UserRepository extends JpaRepository<User, UUID> {
+    //User getUserByUuid(String userId);
+    //User getUserByEmail(String email);
+    //void resetLoginAttempts(String userUuid);
+    //void updateLoginAttempts(String email);
+    //void setLastLogin(Long userId);
+    //void addLoginDevice(Long userId, String device, String client, String ipAddress);
+    Optional<User> findByEmail(String email);
+    Optional<User> findByUserUuid(String userUuid);
+    boolean existsByEmail(String email);
 }

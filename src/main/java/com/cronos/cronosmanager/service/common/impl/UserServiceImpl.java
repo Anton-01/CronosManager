@@ -1,47 +1,93 @@
 package com.cronos.cronosmanager.service.common.impl;
 
 
+import com.cronos.cronosmanager.dto.common.request.RegisterRequestDto;
+import com.cronos.cronosmanager.exception.common.ValidationException;
+import com.cronos.cronosmanager.model.common.Credential;
+import com.cronos.cronosmanager.model.common.Role;
 import com.cronos.cronosmanager.model.common.User;
+import com.cronos.cronosmanager.repository.common.RoleRepository;
 import com.cronos.cronosmanager.repository.common.UserRepository;
+import com.cronos.cronosmanager.utils.UserUtils;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.cronos.cronosmanager.service.common.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
-import static com.cronos.cronosmanager.utils.UserUtils.verifyCode;
+import java.time.ZonedDateTime;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private static final int MAX_LOGIN_ATTEMPTS = 5;
 
     @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+    }
+
+    @Override
+    @Transactional
+    public User registerUser(RegisterRequestDto registerRequest) {
+        if (userRepository.existsByEmail(registerRequest.getEmail())) {
+            throw new ValidationException("Email is already in use.");
+        }
+
+        Role userRole = roleRepository.findByName(registerRequest.getRole())
+                .orElseThrow(() -> new ValidationException("Invalid role specified."));
+
+        User user = new User();
+        user.setFirstName(registerRequest.getFirstName());
+        user.setLastName(registerRequest.getLastName());
+        user.setEmail(registerRequest.getEmail());
+        user.setRoles(Set.of(userRole));
+
+        Credential credential = new Credential(passwordEncoder.encode(registerRequest.getPassword()), user);
+        user.setCredential(credential);
+
+        return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public User getUserByEmail(String email) {
-        return userRepository.getUserByEmail(email);
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
     }
 
     @Override
-    public void resetLoginAttempts(String userId) {
-        userRepository.resetLoginAttempts(userId);
+    @Transactional
+    public void handleFailedLogin(String email) {
+        User user = getUserByEmail(email);
+        user.setLoginAttempts(user.getLoginAttempts() + 1);
+        if (user.getLoginAttempts() >= MAX_LOGIN_ATTEMPTS) {
+            user.setAccountNonLocked(false);
+        }
+        userRepository.save(user);
     }
 
     @Override
-    public void updateLoginAttempts(String email) {
-        userRepository.updateLoginAttempts(email);
+    @Transactional
+    public void handleSuccessfulLogin(String email) {
+        User user = getUserByEmail(email);
+        user.setLoginAttempts(0);
+        user.setLastLogin(ZonedDateTime.now());
+        userRepository.save(user);
     }
 
     @Override
-    public void setLastLogin(Long userId) {
-        userRepository.setLastLogin(userId);
-    }
-
-    @Override
-    public void addLoginDevice(Long userId, String deviceName, String client, String ipAddress) {
-        userRepository.addLoginDevice(userId, deviceName, client, ipAddress);
-    }
-
-    @Override
-    public boolean verifyQrCode(String userId, String code) {
-        var user = userRepository.getUserByUuid(userId);
-        return verifyCode(user.getQrCodeSecret(), code);
+    @Transactional(readOnly = true)
+    public boolean verifyQrCode(String email, String code) {
+        User user = getUserByEmail(email);
+        return UserUtils.verifyCode(user.getQrCodeSecret(), code);
     }
 }

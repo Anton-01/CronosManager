@@ -24,22 +24,22 @@ public class ApiAuthenticationEventListener {
 
     @EventListener
     public void onAuthenticationSuccess(AuthenticationSuccessEvent event) {
-        log.info("AuthenticationSuccess - {}", event);
+        /*log.info("AuthenticationSuccess - {}", event);
         if (event.getAuthentication().getPrincipal() instanceof UsernamePasswordAuthenticationToken) {
             var user = getUser(event.getAuthentication());
             userService.setLastLogin(user.getUserId());
             userService.resetLoginAttempts(user.getUserUuid());
             userService.addLoginDevice(user.getUserId(), getDevice(request), getClient(request), getIpAddress(request));
-        }
+        }*/
     }
 
     // This will not be fired because we need to explicitly trigger the authentication failure event inside the UserAuthenticationProvider.java. So I use an else condition instead in the UserAuthenticationProvider.java class.
     @EventListener
     public void onAuthenticationFailure(AbstractAuthenticationFailureEvent event) {
-        log.info("AuthenticationFailure - {}", event);
+        /*log.info("AuthenticationFailure - {}", event);
         if (event.getException() instanceof BadCredentialsException) {
             var email = (String) event.getAuthentication().getPrincipal();
             userService.updateLoginAttempts(email);
-        }
+        }*/
     }
 }
