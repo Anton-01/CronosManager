@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 @Getter @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Entity
 public class User implements UserDetails {
 
     @Id
@@ -118,7 +119,6 @@ public class User implements UserDetails {
         if (this.credential == null || this.credential.getUpdatedAt() == null) {
             return true;
         }
-        // La contraseña expira después de 90 días
         ZonedDateTime expirationDate = this.credential.getUpdatedAt().plusDays(90);
         return ZonedDateTime.now().isBefore(expirationDate);
     }
