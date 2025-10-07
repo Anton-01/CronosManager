@@ -23,28 +23,64 @@ public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private UUID id;
+    @Column(name = "user_id")
+    private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(name = "user_uuid", unique = true, nullable = false)
     private String userUuid = UUID.randomUUID().toString();
 
+    @Column(name = "first_name", nullable = false)
     private String firstName;
+
+    @Column(name = "last_name", nullable = false)
     private String lastName;
 
     @Column(unique = true, nullable = false)
     private String email;
 
+    @Column(unique = true)
+    private String username;
+
+    @Column(name = "member_id", unique = true)
+    private String memberId;
+
     private String phone;
     private String bio;
+
+    @Column(name = "image_url")
     private String imageUrl;
-    private String qrCodeImageUri;
+
+    @Column(name = "qr_code_secret")
     private String qrCodeSecret;
+
+    @Column(name = "qr_code_image_uri")
+    private String qrCodeImageUri;
+
+    @Column(name = "last_login")
     private ZonedDateTime lastLogin;
+
+    @Column(name = "login_attempts")
     private int loginAttempts = 0;
+
+    @Column(nullable = false)
+    private boolean mfa = false;
+
+    @Column(nullable = false)
+    private boolean enabled = true;
+
+    @Column(name = "account_non_expired", nullable = false)
+    private boolean accountNonExpired = true;
+
+    @Column(name = "account_non_locked", nullable = false)
+    private boolean accountNonLocked = true;
+
+    @Column(name = "created_at", updatable = false)
     private ZonedDateTime createdAt = ZonedDateTime.now();
+
+    @Column(name = "updated_at")
     private ZonedDateTime updatedAt;
 
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
     @JoinTable(
             name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
@@ -55,15 +91,10 @@ public class User implements UserDetails {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Credential credential;
 
-    private boolean mfa = false;
-    private boolean accountNonExpired = true;
-    private boolean accountNonLocked = true;
-    private boolean enabled = true; // El usuario está habilitado por defecto
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return this.roles.stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
+                .map(role -> new SimpleGrantedAuthority(role.getAuthority()))
                 .collect(Collectors.toList());
     }
 
@@ -79,11 +110,11 @@ public class User implements UserDetails {
 
     @Override
     public boolean isCredentialsNonExpired() {
-        if (this.credential == null || this.credential.getCredentialUpdatedAt() == null) {
-            return true; // Si no hay fecha, no consideramos que expire
+        if (this.credential == null || this.credential.getUpdatedAt() == null) {
+            return true;
         }
         // La contraseña expira después de 90 días
-        ZonedDateTime expirationDate = this.credential.getCredentialUpdatedAt().plusDays(90);
+        ZonedDateTime expirationDate = this.credential.getUpdatedAt().plusDays(90);
         return ZonedDateTime.now().isBefore(expirationDate);
     }
 }

@@ -15,7 +15,6 @@ import org.springframework.security.oauth2.server.authorization.context.Authoriz
 import org.springframework.security.oauth2.server.authorization.token.DefaultOAuth2TokenContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.stereotype.Service;
-
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.Set;
@@ -24,7 +23,6 @@ import com.cronos.cronosmanager.service.common.AuthService;
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
-
     private final RegisteredClientRepository registeredClientRepository;
     private final OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator;
     private final OAuth2AuthorizationService authorizationService;
@@ -54,28 +52,32 @@ public class AuthServiceImpl implements AuthService {
         OAuth2AccessToken accessToken = (OAuth2AccessToken) generatedAccessToken;
 
         // --- Generar Refresh Token ---
-        DefaultOAuth2TokenContext refreshTokenContext = DefaultOAuth2TokenContext.builder()
-                .registeredClient(registeredClient)
-                .principal(authentication)
-                .authorizationServerContext(AuthorizationServerContextHolder.getContext())
-                .authorizedScopes(authorizedScopes)
-                .tokenType(OAuth2TokenType.REFRESH_TOKEN)
-                .build();
+        OAuth2RefreshToken refreshToken = null;
+        if (registeredClient.getAuthorizationGrantTypes().contains(org.springframework.security.oauth2.core.AuthorizationGrantType.REFRESH_TOKEN)) {
+            DefaultOAuth2TokenContext refreshTokenContext = DefaultOAuth2TokenContext.builder()
+                    .registeredClient(registeredClient)
+                    .principal(authentication)
+                    .authorizationServerContext(AuthorizationServerContextHolder.getContext())
+                    .authorizedScopes(authorizedScopes)
+                    .tokenType(OAuth2TokenType.REFRESH_TOKEN)
+                    .build();
 
-        OAuth2Token generatedRefreshToken = this.tokenGenerator.generate(refreshTokenContext);
-        OAuth2RefreshToken refreshToken = (generatedRefreshToken instanceof OAuth2RefreshToken) ? (OAuth2RefreshToken) generatedRefreshToken : null;
+            OAuth2Token generatedRefreshToken = this.tokenGenerator.generate(refreshTokenContext);
+            if (generatedRefreshToken instanceof OAuth2RefreshToken) {
+                refreshToken = (OAuth2RefreshToken) generatedRefreshToken;
+            }
+        }
 
-        // --- Guardar la Autorización ---
+        // --- Guardar la Autorización (LÓGICA CORREGIDA) ---
         OAuth2Authorization.Builder authorizationBuilder = OAuth2Authorization.withRegisteredClient(registeredClient)
                 .principalName(authentication.getName())
-                .authorizationGrantType(new org.springframework.security.oauth2.core.AuthorizationGrantType("password")) // Grant type personalizado
-                .authorizedScopes(authorizedScopes)
-                .token(accessToken, (metadata) ->
-                        metadata.put(OAuth2Authorization.Token.CLAIMS_METADATA_NAME, accessToken.getClaims()));
+                .authorizationGrantType(new org.springframework.security.oauth2.core.AuthorizationGrantType("password"))
+                .authorizedScopes(authorizedScopes);
+
+        authorizationBuilder.accessToken(accessToken);
 
         if (refreshToken != null) {
-            authorizationBuilder.token(refreshToken, (metadata) ->
-                    metadata.put(OAuth2Authorization.Token.CLAIMS_METADATA_NAME, refreshToken.getClaims()));
+            authorizationBuilder.refreshToken(refreshToken);
         }
 
         authorizationService.save(authorizationBuilder.build());

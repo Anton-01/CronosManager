@@ -3,47 +3,59 @@ package com.cronos.cronosmanager.security;
 import com.cronos.cronosmanager.service.common.UserService;
 import com.cronos.cronosmanager.model.common.User;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.authentication.LockedException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-
 import java.util.function.Consumer;
-
-import static org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated;
-import static org.springframework.security.core.authority.AuthorityUtils.commaSeparatedStringToAuthorityList;
 
 @Component
 @RequiredArgsConstructor
 public class UserAuthenticationProvider implements AuthenticationProvider{
 
     private final UserService userService;
-    private final BCryptPasswordEncoder encoder;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
+        String email = authentication.getName();
+        String password = authentication.getCredentials().toString();
+
         try {
-            User user = userService.getUserByEmail((String) authentication.getPrincipal());
-            validateUser.accept(user);
-            if (encoder.matches((String) authentication.getCredentials(), user.getPassword())) {
-                return authenticated(user, "[PROTECTED]", commaSeparatedStringToAuthorityList(user.getRole() + "," + user.getAuthorities()));
-            } else {
-                userService.updateLoginAttempts(user.getEmail());
-                throw new BadCredentialsException("Incorrect email/password. Please try again.");
+            UserDetails userDetails = userService.loadUserByUsername(email);
+
+            // Validar estado de la cuenta ANTES de chequear la contraseña
+            if (!userDetails.isAccountNonLocked()) {
+                throw new LockedException("Your account is locked due to too many failed login attempts.");
             }
-        } catch (Exception exception) {
-            throw new BadCredentialsException(exception.getMessage());
+            if (!userDetails.isEnabled()) {
+                throw new DisabledException("Your account is currently disabled.");
+            }
+            if (!userDetails.isCredentialsNonExpired()) {
+                throw new CredentialsExpiredException("Your credentials have expired.");
+            }
+
+            // Ahora, verificar la contraseña
+            if (passwordEncoder.matches(password, userDetails.getPassword())) {
+                userService.handleSuccessfulLogin(email);
+                return new UsernamePasswordAuthenticationToken(userDetails, password, userDetails.getAuthorities());
+            } else {
+                // Si la contraseña es incorrecta, manejar el intento fallido
+                userService.handleFailedLogin(email);
+                throw new BadCredentialsException("Incorrect email or password.");
+            }
+        } catch (AuthenticationException e) {
+            throw e; // Re-lanzar excepciones de seguridad como LockedException, etc.
+        } catch (Exception e) {
+            throw new BadCredentialsException("Incorrect email or password.");
         }
     }
 
     @Override
     public boolean supports(Class<?> authenticationType) {
-        return authenticationType.isAssignableFrom(UsernamePasswordAuthenticationToken.class);
+        return UsernamePasswordAuthenticationToken.class.isAssignableFrom(authenticationType);
     }
 
     private final Consumer<User> validateUser = user -> {
