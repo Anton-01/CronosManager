@@ -46,6 +46,7 @@ public class User implements UserDetails {
 
     private String phone;
     private String bio;
+    private String address;
 
     @Column(name = "image_url")
     private String imageUrl;
@@ -90,6 +91,10 @@ public class User implements UserDetails {
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Credential credential;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Device> devices = new HashSet<>();
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

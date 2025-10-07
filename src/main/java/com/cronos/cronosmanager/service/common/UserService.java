@@ -16,5 +16,6 @@ public interface UserService extends UserDetailsService {
     void handleFailedLogin(String email);
     void handleSuccessfulLogin(String email);
     boolean verifyQrCode(String email, String code);
-
+    //... inside UserService interface
+    void addLoginDevice(User user, String device, String client, String ipAddress);
 }

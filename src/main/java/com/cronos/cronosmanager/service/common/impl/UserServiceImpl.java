@@ -4,8 +4,10 @@ package com.cronos.cronosmanager.service.common.impl;
 import com.cronos.cronosmanager.dto.common.request.RegisterRequestDto;
 import com.cronos.cronosmanager.exception.common.ValidationException;
 import com.cronos.cronosmanager.model.common.Credential;
+import com.cronos.cronosmanager.model.common.Device;
 import com.cronos.cronosmanager.model.common.Role;
 import com.cronos.cronosmanager.model.common.User;
+import com.cronos.cronosmanager.repository.common.DeviceRepository;
 import com.cronos.cronosmanager.repository.common.RoleRepository;
 import com.cronos.cronosmanager.repository.common.UserRepository;
 import com.cronos.cronosmanager.utils.UserUtils;
@@ -26,6 +28,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DeviceRepository deviceRepository;
     private static final int MAX_LOGIN_ATTEMPTS = 5;
 
     @Override
@@ -89,5 +92,16 @@ public class UserServiceImpl implements UserService {
     public boolean verifyQrCode(String email, String code) {
         User user = getUserByEmail(email);
         return UserUtils.verifyCode(user.getQrCodeSecret(), code);
+    }
+
+    @Override
+    @Transactional
+    public void addLoginDevice(User user, String deviceName, String client, String ipAddress) {
+        Device device = new Device();
+        device.setUser(user);
+        device.setDevice(deviceName);
+        device.setClient(client);
+        device.setIpAddress(ipAddress);
+        deviceRepository.save(device);
     }
 }
