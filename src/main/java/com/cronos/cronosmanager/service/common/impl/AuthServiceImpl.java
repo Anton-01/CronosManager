@@ -2,6 +2,8 @@ package com.cronos.cronosmanager.service.common.impl;
 
 import com.cronos.cronosmanager.dto.common.response.LoginResponseDto;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2RefreshToken;
@@ -23,19 +25,21 @@ import com.cronos.cronosmanager.service.common.AuthService;
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+    Logger logger = LoggerFactory.getLogger(AuthServiceImpl.class);
     private final RegisteredClientRepository registeredClientRepository;
     private final OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator;
     private final OAuth2AuthorizationService authorizationService;
 
     @Override
     public LoginResponseDto generateTokens(Authentication authentication) {
+        logger.info("Generating tokens for authentication {}", authentication.getName());
         RegisteredClient registeredClient = registeredClientRepository.findByClientId("client");
         if (registeredClient == null) {
             throw new IllegalStateException("Client 'client' not found. Please ensure it is registered.");
         }
 
         Set<String> authorizedScopes = registeredClient.getScopes();
-
+        logger.info("Authorized scopes: {}", authorizedScopes);
         // --- Generar Access Token ---
         DefaultOAuth2TokenContext accessTokenContext = DefaultOAuth2TokenContext.builder()
                 .registeredClient(registeredClient)
@@ -45,6 +49,7 @@ public class AuthServiceImpl implements AuthService {
                 .tokenType(OAuth2TokenType.ACCESS_TOKEN)
                 .build();
 
+        logger.info("Token context: {}", accessTokenContext);
         OAuth2Token generatedAccessToken = this.tokenGenerator.generate(accessTokenContext);
         if (generatedAccessToken == null) {
             throw new IllegalStateException("Access token could not be generated.");
@@ -68,7 +73,6 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
-        // --- Guardar la Autorización (LÓGICA CORREGIDA) ---
         OAuth2Authorization.Builder authorizationBuilder = OAuth2Authorization.withRegisteredClient(registeredClient)
                 .principalName(authentication.getName())
                 .authorizationGrantType(new org.springframework.security.oauth2.core.AuthorizationGrantType("password"))

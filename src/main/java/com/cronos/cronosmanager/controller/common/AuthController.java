@@ -4,11 +4,14 @@ import com.cronos.cronosmanager.dto.common.request.LoginRequestDto;
 import com.cronos.cronosmanager.dto.common.request.MfaVerificationRequestDto;
 import com.cronos.cronosmanager.dto.common.request.RegisterRequestDto;
 import com.cronos.cronosmanager.dto.common.response.LoginResponseDto;
+import com.cronos.cronosmanager.exception.GlobalExceptionHandler;
 import com.cronos.cronosmanager.model.common.User;
 import com.cronos.cronosmanager.service.common.AuthService;
 import com.cronos.cronosmanager.service.common.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/cron/auth")
 @RequiredArgsConstructor
 public class AuthController {
+    Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
@@ -38,10 +42,12 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequest) {
+        logger.info("Login request received. Request: {}", loginRequest);
         try {
             Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
             User user = (User) authentication.getPrincipal();
 
+            logger.info("User logged in successfully with UUID: {}", user.getUserUuid());
             if (user.isMfa()) {
                 return ResponseEntity.ok(
                         LoginResponseDto.builder()
