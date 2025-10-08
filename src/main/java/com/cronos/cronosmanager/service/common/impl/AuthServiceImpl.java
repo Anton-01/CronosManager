@@ -32,15 +32,15 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponseDto generateTokens(Authentication authentication) {
-        logger.info("Generating tokens for authentication {}", authentication.getName());
+        logger.info(":: Generating tokens for authentication {}", authentication.getName());
         RegisteredClient registeredClient = registeredClientRepository.findByClientId("client");
         if (registeredClient == null) {
             throw new IllegalStateException("Client 'client' not found. Please ensure it is registered.");
         }
 
         Set<String> authorizedScopes = registeredClient.getScopes();
-        logger.info("Authorized scopes: {}", authorizedScopes);
-        // --- Generar Access Token ---
+        logger.info(":: Authorized scopes: {}", authorizedScopes);
+        logger.info(":: AuthorizationServerContextHolder.getContext(): {}", AuthorizationServerContextHolder.getContext());
         DefaultOAuth2TokenContext accessTokenContext = DefaultOAuth2TokenContext.builder()
                 .registeredClient(registeredClient)
                 .principal(authentication)
@@ -49,7 +49,7 @@ public class AuthServiceImpl implements AuthService {
                 .tokenType(OAuth2TokenType.ACCESS_TOKEN)
                 .build();
 
-        logger.info("Token context: {}", accessTokenContext);
+        logger.info(":: Token context: {}", accessTokenContext);
         OAuth2Token generatedAccessToken = this.tokenGenerator.generate(accessTokenContext);
         if (generatedAccessToken == null) {
             throw new IllegalStateException("Access token could not be generated.");

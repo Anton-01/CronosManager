@@ -3,6 +3,8 @@ package com.cronos.cronosmanager.security;
 import com.cronos.cronosmanager.service.common.UserService;
 import com.cronos.cronosmanager.model.common.User;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -14,19 +16,19 @@ import java.util.function.Consumer;
 @Component
 @RequiredArgsConstructor
 public class UserAuthenticationProvider implements AuthenticationProvider{
+    Logger logger = LoggerFactory.getLogger(UserAuthenticationProvider.class);
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
+        logger.info(":: Authenticating user by username - : {}", authentication.getName());
         String email = authentication.getName();
         String password = authentication.getCredentials().toString();
 
         try {
             UserDetails userDetails = userService.loadUserByUsername(email);
-
-            // Validar estado de la cuenta ANTES de chequear la contraseña
             if (!userDetails.isAccountNonLocked()) {
                 throw new LockedException("Your account is locked due to too many failed login attempts.");
             }
@@ -37,12 +39,10 @@ public class UserAuthenticationProvider implements AuthenticationProvider{
                 throw new CredentialsExpiredException("Your credentials have expired.");
             }
 
-            // Ahora, verificar la contraseña
             if (passwordEncoder.matches(password, userDetails.getPassword())) {
                 userService.handleSuccessfulLogin(email);
                 return new UsernamePasswordAuthenticationToken(userDetails, password, userDetails.getAuthorities());
             } else {
-                // Si la contraseña es incorrecta, manejar el intento fallido
                 userService.handleFailedLogin(email);
                 throw new BadCredentialsException("Incorrect email or password.");
             }

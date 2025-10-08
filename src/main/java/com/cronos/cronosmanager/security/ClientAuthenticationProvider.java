@@ -1,5 +1,7 @@
 package com.cronos.cronosmanager.security;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -13,10 +15,12 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ClientAuthenticationProvider implements AuthenticationProvider {
+    Logger logger = LoggerFactory.getLogger(ClientAuthenticationProvider.class);
 
     private final RegisteredClientRepository registeredClientRepository;
 
     public ClientAuthenticationProvider(RegisteredClientRepository registeredClientRepository) {
+        logger.info(":: Client authentication provider called - method ClientAuthenticationProvider");
         this.registeredClientRepository = registeredClientRepository;
     }
 
@@ -29,18 +33,10 @@ public class ClientAuthenticationProvider implements AuthenticationProvider {
         String clientId = clientRefreshTokenAuthentication.getPrincipal().toString();
         RegisteredClient registeredClient = registeredClientRepository.findByClientId(clientId);
         if(registeredClient == null) {
-            throw new OAuth2AuthenticationException(new OAuth2Error(
-                    OAuth2ErrorCodes.INVALID_CLIENT,
-                    "client is not valid",
-                    null
-            ));
+            throw new OAuth2AuthenticationException(new OAuth2Error(OAuth2ErrorCodes.INVALID_CLIENT, "client is not valid", null));
         }
         if(!registeredClient.getClientAuthenticationMethods().contains(clientRefreshTokenAuthentication.getClientAuthenticationMethod())) {
-            throw new OAuth2AuthenticationException(new OAuth2Error(
-                    OAuth2ErrorCodes.INVALID_CLIENT,
-                    "authentication_method is not register with client",
-                    null
-            ));
+            throw new OAuth2AuthenticationException(new OAuth2Error(OAuth2ErrorCodes.INVALID_CLIENT, "authentication_method is not register with client", null));
         }
         return new ClientRefreshTokenAuthentication(registeredClient);
     }

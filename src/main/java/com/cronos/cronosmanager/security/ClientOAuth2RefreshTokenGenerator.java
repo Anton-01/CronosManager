@@ -1,5 +1,7 @@
 package com.cronos.cronosmanager.security;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.Nullable;
 import org.springframework.security.crypto.keygen.Base64StringKeyGenerator;
 import org.springframework.security.crypto.keygen.StringKeyGenerator;
@@ -12,12 +14,14 @@ import java.time.Instant;
 import java.util.Base64;
 
 public class ClientOAuth2RefreshTokenGenerator implements OAuth2TokenGenerator<OAuth2RefreshToken> {
+    Logger logger = LoggerFactory.getLogger(ClientOAuth2RefreshTokenGenerator.class);
     private final StringKeyGenerator refreshTokenGenerator = new Base64StringKeyGenerator(Base64.getUrlEncoder().withoutPadding(), 96);
 
     public ClientOAuth2RefreshTokenGenerator() {}
 
     @Nullable
     public OAuth2RefreshToken generate(OAuth2TokenContext context) {
+        logger.debug("Generating refresh token for client. Method signature OAuth2RefreshToken - generate method");
         if (!OAuth2TokenType.REFRESH_TOKEN.equals(context.getTokenType())) {
             return null;
         }  else {

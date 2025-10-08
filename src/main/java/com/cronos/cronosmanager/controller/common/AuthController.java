@@ -57,11 +57,11 @@ public class AuthController {
                 );
             }
 
-            // Delegar la generación de tokens al servicio
             return ResponseEntity.ok(authService.generateTokens(authentication));
 
-        } catch (BadCredentialsException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(LoginResponseDto.builder().message("Invalid credentials.").build());
+        } catch (Exception e) {
+            logger.error("Error while trying to authenticate user: {}, reason {}", loginRequest.getEmail(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(LoginResponseDto.builder().message(e.getMessage()).build());
         }
     }
 

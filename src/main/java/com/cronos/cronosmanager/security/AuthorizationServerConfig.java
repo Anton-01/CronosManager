@@ -4,6 +4,8 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -42,27 +44,31 @@ import static org.springframework.http.HttpMethod.*;
 @Configuration
 @RequiredArgsConstructor
 public class AuthorizationServerConfig {
+    Logger log = LoggerFactory.getLogger(AuthorizationServerConfig.class);
+    private final UserAuthenticationProvider userAuthenticationProvider;
 
     @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+        log.info(":: Configuring authorization server security filter chain");
         OAuth2AuthorizationServerConfigurer authorizationConfig = new OAuth2AuthorizationServerConfigurer();
+
         http.securityMatcher(authorizationConfig.getEndpointsMatcher())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.ignoringRequestMatchers(authorizationConfig.getEndpointsMatcher()))
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
-                .with(authorizationConfig, Customizer.withDefaults());
+                .with(authorizationConfig, configurer -> {
+                    configurer.oidc(Customizer.withDefaults())
+                            .tokenEndpoint(tokenEndpoint -> tokenEndpoint
+                                    .authenticationProvider(userAuthenticationProvider)
+                            );
+                });
         return http.build();
     }
 
     @Bean
-    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcOperations) {
-        return new JdbcRegisteredClientRepository(jdbcOperations);
-    }
-
-    @Bean
-    public AuthenticationSuccessHandler authenticationSuccessHandler() {
-        return new SavedRequestAwareAuthenticationSuccessHandler();
+    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
+        return new JdbcRegisteredClientRepository(jdbcTemplate);
     }
 
     @Bean
@@ -94,20 +100,14 @@ public class AuthorizationServerConfig {
         NimbusJwtEncoder jwtEncoder = new NimbusJwtEncoder(jwkSource);
         UserJwtGenerator jwtGenerator = UserJwtGenerator.init(jwtEncoder);
         jwtGenerator.setJwtCustomizer(customizer());
-        OAuth2TokenGenerator<OAuth2RefreshToken> refreshTokenOAuth2TokenGenerator = new ClientOAuth2RefreshTokenGenerator();
-        return new DelegatingOAuth2TokenGenerator(jwtGenerator, refreshTokenOAuth2TokenGenerator);
+
+        ClientOAuth2RefreshTokenGenerator refreshTokenGenerator = new ClientOAuth2RefreshTokenGenerator();
+
+        return new DelegatingOAuth2TokenGenerator(jwtGenerator, refreshTokenGenerator);
     }
 
     private String getAuthorities(JwtEncodingContext context) {
         return context.getPrincipal().getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(joining(","));
-    }
-
-    @Bean
-    public HttpFirewall getHttpFirewall() {
-        StrictHttpFirewall strictHttpFirewall = new StrictHttpFirewall();
-        strictHttpFirewall.setAllowSemicolon(true);
-        strictHttpFirewall.setAllowBackSlash(true);
-        return strictHttpFirewall;
     }
 
     @Bean
