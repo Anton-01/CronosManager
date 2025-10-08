@@ -18,7 +18,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/cron/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -30,7 +30,7 @@ public class AuthController {
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequestDto registerRequest) {
         try {
             User user = userService.registerUser(registerRequest);
-            return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully with UUID: " + user.getId());
+            return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully with UUID: " + user.getUserUuid());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -39,10 +39,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto loginRequest) {
         try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword())
-            );
-
+            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
             User user = (User) authentication.getPrincipal();
 
             if (user.isMfa()) {
@@ -58,8 +55,7 @@ public class AuthController {
             return ResponseEntity.ok(authService.generateTokens(authentication));
 
         } catch (BadCredentialsException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(LoginResponseDto.builder().message("Invalid credentials.").build());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(LoginResponseDto.builder().message("Invalid credentials.").build());
         }
     }
 

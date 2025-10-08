@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -45,13 +46,15 @@ public class UserServiceImpl implements UserService {
             throw new ValidationException("Email is already in use.");
         }
 
-        Role userRole = roleRepository.findByName(registerRequest.getRole())
-                .orElseThrow(() -> new ValidationException("Invalid role specified."));
+        Role userRole = roleRepository.findByName(registerRequest.getRole()).orElseThrow(() -> new ValidationException("Invalid role specified."));
 
         User user = new User();
         user.setFirstName(registerRequest.getFirstName());
         user.setLastName(registerRequest.getLastName());
         user.setEmail(registerRequest.getEmail());
+        user.setUsername(registerRequest.getEmail());
+        user.setMemberId(UUID.randomUUID().toString());
+
         user.setRoles(Set.of(userRole));
 
         Credential credential = new Credential(passwordEncoder.encode(registerRequest.getPassword()), user);

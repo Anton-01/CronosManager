@@ -6,6 +6,7 @@ import jakarta.persistence.EntityExistsException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -21,6 +22,14 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ResponseApi<Void>> handleDataIntegrityViolation(DataIntegrityViolationException ex, WebRequest request) {
+        logger.error("Data Integrity error. Caused by : {}", ex.getMostSpecificCause().getMessage());
+        String message = "A data conflict occurred. A provided value may already exist or violates a required constraint.";
+        ResponseApi<Void> response = new ResponseApi<>(HttpStatus.CONFLICT, message);
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ResponseApi<Void>> handleResourceNotFound(ResourceNotFoundException ex, WebRequest request) {

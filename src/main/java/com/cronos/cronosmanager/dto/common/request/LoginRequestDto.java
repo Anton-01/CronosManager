@@ -6,10 +6,10 @@ import lombok.Data;
 
 @Data
 public class LoginRequestDto {
-    @NotEmpty(message = "El correo electrónico no puede estar vacío.")
-    @Email(message = "El formato del correo electrónico no es válido.")
+    @NotEmpty(message = "The e-mail field cannot be empty")
+    @Email(message = "The e-mail format is invalid.")
     private String email;
 
-    @NotEmpty(message = "La contraseña no puede estar vacía.")
+    @NotEmpty(message = "The password field cannot be empty.")
     private String password;
 }

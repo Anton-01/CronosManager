@@ -13,16 +13,15 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
-
+import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.Duration;
-
-import static java.util.UUID.randomUUID;
+import java.util.UUID;
 
 @Slf4j
 @SpringBootApplication
 public class CronosManagerApplication {
 
-    @Value("ui.app.url")
+    @Value("${ui.app.url:http://localhost:3000/callback}")
     private String redirectUri;
 
     public static void main(String[] args) {
@@ -30,32 +29,36 @@ public class CronosManagerApplication {
     }
 
     @Bean
-    public ApplicationRunner runner(RegisteredClientRepository registeredClientRepository) {
+    public ApplicationRunner runner(RegisteredClientRepository registeredClientRepository, PasswordEncoder passwordEncoder) {
         return args -> {
-            if(registeredClientRepository.findById("cliente") == null) {
+            if (registeredClientRepository.findByClientId("client") == null) {
+                log.info("Registered client 'client' not found. Creating it...");
                 try {
-                    RegisteredClient registeredClient = RegisteredClient.withId(randomUUID().toString())
-                            .clientId("client").clientSecret("secret")
-                            .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                            .authorizationGrantTypes(types -> {
-                                types.add(AuthorizationGrantType.AUTHORIZATION_CODE);
-                                types.add(AuthorizationGrantType.REFRESH_TOKEN);
-                            })
-                            .scopes(scopes -> {
-                                scopes.add(OidcScopes.OPENID);
-                                scopes.add(OidcScopes.PROFILE);
-                                scopes.add(OidcScopes.EMAIL);
-                            })
+                    RegisteredClient registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                            .clientId("client")
+                            .clientSecret(passwordEncoder.encode("secret"))
+                            .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                            .authorizationGrantType(AuthorizationGrantType.PASSWORD)
+                            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                            .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                             .redirectUri(redirectUri)
-                            .postLogoutRedirectUri("http://127.0.0.1:8080")
+                            .scope(OidcScopes.OPENID)
+                            .scope(OidcScopes.PROFILE)
                             .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
-                            .tokenSettings(TokenSettings.builder().refreshTokenTimeToLive(Duration.ofDays(5)).accessTokenTimeToLive(Duration.ofDays(3)).build())
+                            .tokenSettings(TokenSettings.builder()
+                                    .refreshTokenTimeToLive(Duration.ofDays(15))
+                                    .accessTokenTimeToLive(Duration.ofHours(8))
+                                    .build())
                             .build();
 
                     registeredClientRepository.save(registeredClient);
+                    log.info("Registered client 'client' created successfully.");
                 } catch (Exception e) {
-                    log.error("An error occurred while trying generate RegisteredClient. Cause {}", e.getMessage(), e);
+                    log.error("An error occurred while trying to generate RegisteredClient. Cause {}", e.getMessage(), e);
                 }
+            } else {
+                log.info("Registered client 'client' already exists. Skipping creation.");
             }
         };
     }
