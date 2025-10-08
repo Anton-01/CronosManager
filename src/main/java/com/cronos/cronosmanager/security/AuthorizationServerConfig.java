@@ -40,7 +40,7 @@ import static java.util.stream.Collectors.joining;
 import static org.springframework.http.HttpHeaders.*;
 import static org.springframework.http.HttpMethod.*;
 
-@Slf4j
+
 @Configuration
 @RequiredArgsConstructor
 public class AuthorizationServerConfig {
@@ -83,7 +83,8 @@ public class AuthorizationServerConfig {
 
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
-        return AuthorizationServerSettings.builder().build();
+        log.info(":: Configuring authorization server settings - method - authorizationServerSettings");
+        return AuthorizationServerSettings.builder().issuer("http://localhost:8088").build();
     }
 
     @Bean

@@ -133,8 +133,7 @@ public class UserJwtGenerator implements OAuth2TokenGenerator<Jwt> {
         }
         JwsHeader jwsHeader = jwsHeaderBuilder.build();
         JwtClaimsSet claims = claimsBuilder.build();
-        Jwt jwt = this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims));
-        return jwt;
+        return this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims));
     }
 
     public void setJwtCustomizer(OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer) {

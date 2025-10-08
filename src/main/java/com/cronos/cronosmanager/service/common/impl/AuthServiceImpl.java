@@ -25,10 +25,12 @@ import com.cronos.cronosmanager.service.common.AuthService;
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+
     Logger logger = LoggerFactory.getLogger(AuthServiceImpl.class);
     private final RegisteredClientRepository registeredClientRepository;
     private final OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator;
     private final OAuth2AuthorizationService authorizationService;
+
 
     @Override
     public LoginResponseDto generateTokens(Authentication authentication) {
@@ -96,4 +98,5 @@ public class AuthServiceImpl implements AuthService {
                 .message("Login successful.")
                 .build();
     }
+
 }
