@@ -1,5 +1,7 @@
 package com.cronos.cronosmanager.security;
 
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.proc.SecurityContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -41,25 +43,15 @@ import static org.springframework.http.HttpMethod.*;
 @RequiredArgsConstructor
 public class AuthorizationServerConfig {
 
-    private final JwtConfiguration configuration;
-
     @Bean
     @Order(1)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http, RegisteredClientRepository registeredClientRepository) throws Exception {
+    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationServerConfigurer authorizationConfig = new OAuth2AuthorizationServerConfigurer();
         http.securityMatcher(authorizationConfig.getEndpointsMatcher())
-                .cors(corsConfigurer -> corsConfigurer.configurationSource(corsConfigurationSource()))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.ignoringRequestMatchers(authorizationConfig.getEndpointsMatcher()))
-                .with(authorizationConfig, authorizationServer ->
-                        authorizationServer.oidc(Customizer.withDefaults())
-                                .authorizationServerSettings(authorizationServerSettings())
-                                .registeredClientRepository(registeredClientRepository)
-                                .tokenGenerator(tokenGenerator())
-                                .clientAuthentication(authentication -> {
-                                    authentication.authenticationConverter(new ClientRefreshTokenAuthenticationConverter());
-                                    authentication.authenticationProvider(new ClientAuthenticationProvider(registeredClientRepository));
-                                }))
-                .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated());
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
+                .with(authorizationConfig, Customizer.withDefaults());
         return http.build();
     }
 
@@ -83,7 +75,6 @@ public class AuthorizationServerConfig {
         return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
     }
 
-
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder().build();
@@ -99,8 +90,9 @@ public class AuthorizationServerConfig {
     }
 
     @Bean
-    public OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator() {
-        UserJwtGenerator jwtGenerator = UserJwtGenerator.init(new NimbusJwtEncoder(configuration.jwkSource()));
+    public OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator(JWKSource<SecurityContext> jwkSource) {
+        NimbusJwtEncoder jwtEncoder = new NimbusJwtEncoder(jwkSource);
+        UserJwtGenerator jwtGenerator = UserJwtGenerator.init(jwtEncoder);
         jwtGenerator.setJwtCustomizer(customizer());
         OAuth2TokenGenerator<OAuth2RefreshToken> refreshTokenOAuth2TokenGenerator = new ClientOAuth2RefreshTokenGenerator();
         return new DelegatingOAuth2TokenGenerator(jwtGenerator, refreshTokenOAuth2TokenGenerator);
